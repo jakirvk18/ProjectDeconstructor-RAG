@@ -49,14 +49,20 @@ const MainPage = () => {
         const data = await response.json();
 
         if (data.success && data.messages.length > 0) {
-          // Convert stored messages into timeline entries
+          // History messages always get animate: false — never animate on reload
           const restored = data.messages.flatMap((msg) => [
-            { type: "chat", sender: "user", text: msg.query },
+            {
+              type: "chat",
+              sender: "user",
+              text: msg.query,
+              animate: false,
+            },
             {
               type: "chat",
               sender: "ai",
               text: msg.answer,
               response_type: msg.response_type,
+              animate: false,
             },
           ]);
           setTimeline(restored);
@@ -111,7 +117,7 @@ const MainPage = () => {
         console.error(err);
         setTimeline((prev) => [
           ...prev,
-          { type: "chat", sender: "ai", text: "Error loading file." },
+          { type: "chat", sender: "ai", text: "Error loading file.", animate: false },
         ]);
       } finally {
         setLoading(false);
@@ -130,7 +136,7 @@ const MainPage = () => {
 
     setTimeline((prev) => [
       ...prev,
-      { type: "chat", sender: "user", text: question },
+      { type: "chat", sender: "user", text: question, animate: false },
     ]);
     setInputValue("");
     setSending(true);
@@ -152,6 +158,7 @@ const MainPage = () => {
         throw new Error(data.detail || "Server error");
       }
 
+      // animate: true ONLY for fresh AI responses, never for history
       setTimeline((prev) => [
         ...prev,
         {
@@ -159,6 +166,7 @@ const MainPage = () => {
           sender: "ai",
           text: data.answer || "No response received.",
           response_type: data.response_type,
+          animate: true,
         },
       ]);
     } catch (err) {
@@ -169,6 +177,7 @@ const MainPage = () => {
           type: "chat",
           sender: "ai",
           text: `Error: ${err.message || "Could not reach AI server."}`,
+          animate: false,
         },
       ]);
     } finally {
@@ -249,7 +258,7 @@ const MainPage = () => {
               onClick={handleClearChat}
               disabled={clearing}
               title="Clear chat history"
-              className="flex items-center gap-2 text-xs text-slate-400 hover:text-red-400 transition-colors disabled:opacity-50 px-3 py-2 rounded border border-slate-700 hover:border-red-500"
+              className="flex items-center gap-2 text-xs text-slate-400 hover:text-red-400 transition-colors disabled:opacity-50 px-3 py-2 rounded border border-slate-700 hover:border-red-500 cursor-pointer"
             >
               <Trash2 size={14} />
               {clearing ? "Clearing…" : "Clear history"}
@@ -260,6 +269,7 @@ const MainPage = () => {
         {/* Chat / File Timeline */}
         <ChatScreen
           timeline={timeline}
+          setTimeline={setTimeline}
           loading={loading || historyLoading}
           sending={sending}
           messagesEndRef={messagesEndRef}

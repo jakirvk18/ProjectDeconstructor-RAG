@@ -55,7 +55,10 @@ const SearchPage = () => {
       {/* Title Header with Tech Vibe */}
       <div className="text-center space-y-2">
         {/* floating text animation */}
-        <h1 className="text-4xl md:text-5xl text-transparent bg-clip-text bg-gradient-to-r from-slate-100 via-cyan-400 to-slate-100 font-bold tracking-tight font-sans animate-float">
+        <span className="flex items-center justify-center animate-float">
+          <img src="./icon.png" alt="Logo" style={{ width: 70, height: 60 }} />
+        </span>
+        <h1 className="text-2xl md:text-3xl text-transparent bg-clip-text bg-gradient-to-r from-slate-100 via-cyan-400 to-slate-100 font-bold tracking-tight font-sans ">
           ProjectDeconstructor RAG
         </h1>
         <p className="text-xs tracking-widest text-slate-500 font-sans">

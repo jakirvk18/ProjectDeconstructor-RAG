@@ -1,19 +1,15 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { TypeAnimation } from "react-type-animation";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import FileContent from "./FileContent";
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
 const RESPONSE_TYPE_META = {
-  audit:        { label: "Security audit",  color: "#EF4444", bg: "rgba(239,68,68,0.08)",   border: "rgba(239,68,68,0.2)"  },
-  architecture: { label: "Architecture",    color: "#A78BFA", bg: "rgba(167,139,250,0.08)", border: "rgba(167,139,250,0.2)" },
-  chat:         { label: "Assistant",       color: "#22D3EE", bg: "transparent",             border: "transparent"          },
+  audit: { label: "Security audit", color: "#EF4444", bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.2)" },
+  architecture: { label: "Architecture", color: "#A78BFA", bg: "rgba(167,139,250,0.08)", border: "rgba(167,139,250,0.2)" },
+  chat: { label: "Assistant", color: "#04b8b8", bg: "transparent", border: "transparent" },
 };
-
-// ─── Copy button ───────────────────────────────────────────────────────────
 
 const CopyButton = ({ text }) => {
   const [copied, setCopied] = useState(false);
@@ -24,7 +20,6 @@ const CopyButton = ({ text }) => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // clipboard unavailable
     }
   }, [text]);
 
@@ -53,8 +48,6 @@ const CopyButton = ({ text }) => {
     </button>
   );
 };
-
-// ─── Code block ────────────────────────────────────────────────────────────
 
 const CodeBlock = ({ language, children }) => {
   const code = String(children).replace(/\n$/, "");
@@ -97,8 +90,6 @@ const CodeBlock = ({ language, children }) => {
   );
 };
 
-// ─── Markdown components ────────────────────────────────────────────────────
-
 const mdComponents = {
   code({ node, inline, className, children, ...props }) {
     const match = /language-(\w+)/.exec(className || "");
@@ -113,7 +104,7 @@ const mdComponents = {
           border: "1px solid rgba(34,211,238,0.12)",
           borderRadius: 4,
           padding: "2px 5px",
-          color: "#22D3EE",
+          color: "#6385f2",
         }}
         {...props}
       >
@@ -121,13 +112,45 @@ const mdComponents = {
       </code>
     );
   },
-  // Wrap bare code fences with no language tag
   pre({ children }) {
     return <>{children}</>;
   },
 };
 
-// ─── Styles ────────────────────────────────────────────────────────────────
+const AnimatedMarkdown = ({ text, messagesEndRef, onComplete }) => {
+  const [displayedText, setDisplayedText] = useState("");
+  // Track whether this instance has already completed, to avoid re-animating
+  const completedRef = useRef(false);
+
+  useEffect(() => {
+    // Reset only when text prop changes (new message), not on re-renders
+    setDisplayedText("");
+    completedRef.current = false;
+  }, [text]);
+
+  useEffect(() => {
+    if (completedRef.current) return;
+
+    if (displayedText.length >= text.length) {
+      completedRef.current = true;
+      onComplete?.();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setDisplayedText(text.slice(0, displayedText.length + 1));
+      messagesEndRef?.current?.scrollIntoView({ behavior: "smooth" });
+    }, 2);
+
+    return () => clearTimeout(timer);
+  }, [displayedText, text, onComplete, messagesEndRef]);
+
+  return (
+    <ReactMarkdown components={mdComponents}>
+      {displayedText}
+    </ReactMarkdown>
+  );
+};
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -151,7 +174,6 @@ const styles = `
     border-radius: 99px;
   }
 
-  /* ── Welcome ── */
   .cs-welcome {
     flex: 1;
     display: flex;
@@ -215,7 +237,6 @@ const styles = `
     letter-spacing: 0.02em;
   }
 
-  /* ── Timeline ── */
   .cs-timeline {
     display: flex;
     flex-direction: column;
@@ -223,7 +244,6 @@ const styles = `
     width: 100%;
   }
 
-  /* ── Date separator ── */
   .cs-day-sep {
     display: flex;
     align-items: center;
@@ -246,14 +266,12 @@ const styles = `
     text-transform: uppercase;
   }
 
-  /* ── File item ── */
   .cs-file-item {
     width: 100%;
     flex-shrink: 0;
     padding: 4px 0;
   }
 
-  /* ── Bubbles ── */
   .cs-bubble {
     display: flex;
     flex-direction: column;
@@ -274,7 +292,7 @@ const styles = `
 
   .cs-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9.5px;
+    font-size: 12px;
     font-weight: 500;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -284,7 +302,7 @@ const styles = `
     gap: 6px;
   }
 
-  .cs-label-user { color: #334155; }
+  .cs-label-user { color: #3029ff; }
 
   .cs-type-badge {
     font-family: 'JetBrains Mono', monospace;
@@ -297,7 +315,6 @@ const styles = `
     border-style: solid;
   }
 
-  /* ── Bubble body ── */
   .cs-body-user {
     background: rgba(255,255,255,0.07);
     border: 1px solid rgba(255,255,255,0.09);
@@ -318,7 +335,6 @@ const styles = `
     width: 100%;
   }
 
-  /* ── Markdown inside AI bubbles ── */
   .cs-body-ai h1, .cs-body-ai h2, .cs-body-ai h3,
   .cs-body-ai h4, .cs-body-ai h5, .cs-body-ai h6 {
     font-family: 'Inter', sans-serif;
@@ -327,9 +343,9 @@ const styles = `
     margin: 20px 0 8px;
     line-height: 1.3;
   }
-  .cs-body-ai h1 { font-size: 17px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 8px; }
-  .cs-body-ai h2 { font-size: 15px; color: #22D3EE; }
-  .cs-body-ai h3 { font-size: 13.5px; color: #94A3B8; }
+  .cs-body-ai h1 { font-size: 20px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 8px; }
+  .cs-body-ai h2 { font-size: 17px; color: #22D3EE; }
+  .cs-body-ai h3 { font-size: 15px; color: #94A3B8; }
 
   .cs-body-ai p { margin: 8px 0; }
   .cs-body-ai p:first-child { margin-top: 0; }
@@ -387,7 +403,6 @@ const styles = `
   }
   .cs-body-ai tr:last-child td { border-bottom: none; }
 
-  /* ── Loading ── */
   .cs-loading-file {
     align-self: center;
     font-family: 'JetBrains Mono', monospace;
@@ -403,7 +418,6 @@ const styles = `
     50%       { opacity: 1;   }
   }
 
-  /* ── Typing indicator ── */
   .cs-typing {
     align-self: flex-start;
     display: flex;
@@ -413,12 +427,12 @@ const styles = `
   }
 
   .cs-dot {
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     animation: cs-bounce 1.2s ease-in-out infinite;
   }
-  .cs-dot:nth-child(1) { background: #7C3AED; animation-delay: 0s; }
+  .cs-dot:nth-child(1) { background: #760296; animation-delay: 0s; }
   .cs-dot:nth-child(2) { background: #9F6EFF; animation-delay: 0.18s; }
   .cs-dot:nth-child(3) { background: #22D3EE; animation-delay: 0.36s; }
 
@@ -427,7 +441,6 @@ const styles = `
     40%           { transform: translateY(-6px); opacity: 1;    }
   }
 
-  /* ── Divider between restored history and new messages ── */
   .cs-history-marker {
     display: flex;
     align-items: center;
@@ -445,9 +458,13 @@ const styles = `
   }
 `;
 
-// ─── Main component ────────────────────────────────────────────────────────
-
-const ChatScreen = ({ timeline, loading, sending, messagesEndRef }) => {
+const ChatScreen = ({
+  timeline,
+  setTimeline,
+  loading,
+  sending,
+  messagesEndRef,
+}) => {
   return (
     <>
       <style>{styles}</style>
@@ -480,7 +497,6 @@ const ChatScreen = ({ timeline, loading, sending, messagesEndRef }) => {
         ) : (
           <div className="cs-timeline">
             {timeline.map((item, index) => {
-              // ── File entry ──
               if (item.type === "file") {
                 return (
                   <div key={index} className="cs-file-item">
@@ -495,21 +511,24 @@ const ChatScreen = ({ timeline, loading, sending, messagesEndRef }) => {
                 );
               }
 
-              // ── Chat bubble ──
               const isUser = item.sender === "user";
               const meta = RESPONSE_TYPE_META[item.response_type] ?? RESPONSE_TYPE_META.chat;
+              // Only animate if explicitly flagged — history always has animate: false
+              const shouldAnimate = !isUser && item.animate === true;
 
               return (
                 <div
                   key={index}
                   className={`cs-bubble ${isUser ? "cs-bubble-user" : "cs-bubble-ai"}`}
                 >
-                  {/* Label row */}
                   <div className={`cs-label ${isUser ? "cs-label-user" : ""}`}>
                     {isUser ? (
                       "You"
                     ) : (
                       <>
+                        <span>
+                          <img src="./icon.png" alt="Assistant" style={{ width: 20, height: 20, marginRight: 2 }} />
+                        </span>
                         <span style={{ color: meta.color }}>
                           {meta.label}
                         </span>
@@ -529,21 +548,34 @@ const ChatScreen = ({ timeline, loading, sending, messagesEndRef }) => {
                     )}
                   </div>
 
-                  {/* Body */}
                   {isUser ? (
                     <div className="cs-body-user">{item.text}</div>
                   ) : (
                     <div className="cs-body-ai">
-                      <ReactMarkdown components={mdComponents}>
-                        {item.text}
-                      </ReactMarkdown>
+                      {shouldAnimate ? (
+                        <AnimatedMarkdown
+                          key={`anim-${index}`}
+                          text={item.text}
+                          messagesEndRef={messagesEndRef}
+                          onComplete={() => {
+                            setTimeline(prev =>
+                              prev.map((msg, i) =>
+                                i === index ? { ...msg, animate: false } : msg
+                              )
+                            );
+                          }}
+                        />
+                      ) : (
+                        <ReactMarkdown components={mdComponents}>
+                          {item.text}
+                        </ReactMarkdown>
+                      )}
                     </div>
                   )}
                 </div>
               );
             })}
 
-            {/* Loading / sending states */}
             {loading && (
               <div className="cs-loading-file">// loading…</div>
             )}
